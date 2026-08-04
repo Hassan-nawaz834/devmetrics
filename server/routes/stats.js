@@ -1,5 +1,6 @@
 const express = require('express');
 const Commit = require('../models/Commit');
+const { buildProductivitySummary } = require('../services/productivityService');
 
 const router = express.Router();
 
@@ -11,18 +12,12 @@ const isAuthenticated = (req, res, next) => {
 // Get user's overall stats
 router.get('/overview', isAuthenticated, async (req, res) => {
   try {
-    const commits = await Commit.find({ userId: req.user._id });
-    const totalCommits = commits.length;
-    const uniqueDays = new Set(commits.map(c => c.date?.toDateString())).size;
-    const totalAdditions = commits.reduce((sum, c) => sum + (c.additions || 0), 0);
-    const totalDeletions = commits.reduce((sum, c) => sum + (c.deletions || 0), 0);
-    
+    const commits = await Commit.find({ userId: req.user._id }).sort({ date: 1 });
+    const summary = buildProductivitySummary(commits);
+
     res.json({
-      totalCommits,
-      uniqueDays,
-      totalAdditions,
-      totalDeletions,
-      averageCommitsPerDay: uniqueDays > 0 ? (totalCommits / uniqueDays).toFixed(2) : 0
+      ...summary,
+      averageCommitsPerDay: summary.averageDailyCommits
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,19 +1,36 @@
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 function Settings() {
   const { user, logout } = useAuth();
-  const [syncFrequency, setSyncFrequency] = useState(user?.settings?.syncFrequency || 'daily');
-  const [emailReports, setEmailReports] = useState(user?.settings?.emailReports || false);
+  const [syncFrequency, setSyncFrequency] = useState('daily');
+  const [emailReports, setEmailReports] = useState(false);
+  const [privateRepos, setPrivateRepos] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user?.settings) {
+      setSyncFrequency(user.settings.syncFrequency || 'daily');
+      setEmailReports(Boolean(user.settings.emailReports));
+      setPrivateRepos(Boolean(user.settings.privateRepos));
+    }
+  }, [user]);
 
   const updateSettings = async () => {
-    await axios.put('/api/user/settings',
-      { syncFrequency, emailReports },
-      { withCredentials: true }
-    );
-    alert('Settings updated!');
+    setSaving(true);
+    try {
+      await axios.put('/api/user/settings',
+        { syncFrequency, emailReports, privateRepos },
+        { withCredentials: true }
+      );
+      alert('Settings updated!');
+    } catch (error) {
+      alert('Unable to update settings right now.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteAccount = async () => {
@@ -61,11 +78,22 @@ function Settings() {
               <span>Receive weekly email reports</span>
             </label>
           </div>
+          <div className="mb-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={privateRepos}
+                onChange={(e) => setPrivateRepos(e.target.checked)}
+              />
+              <span>Include private repositories</span>
+            </label>
+          </div>
           <button
             onClick={updateSettings}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            disabled={saving}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
           >
-            Save Settings
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
 

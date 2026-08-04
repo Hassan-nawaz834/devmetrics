@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Teams from './pages/Teams';
 import TeamDetails from './pages/TeamDetails';
+import Landing from './pages/Landing';
+import Settings from './pages/Settings';
 
 // Protected Route Component
 function PrivateRoute({ children }) {
@@ -27,6 +29,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={
         <PrivateRoute>
@@ -43,7 +46,12 @@ function AppRoutes() {
           <TeamDetails />
         </PrivateRoute>
       } />
-      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/settings" element={
+        <PrivateRoute>
+          <Settings />
+        </PrivateRoute>
+      } />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }

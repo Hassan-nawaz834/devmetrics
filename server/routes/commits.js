@@ -10,9 +10,10 @@ const isAuthenticated = (req, res, next) => {
 
 // Get user's commits
 router.get('/', isAuthenticated, async (req, res) => {
-  const { limit = 100, repo } = req.query;
+  const { limit = 100, repo, visibility } = req.query;
   const query = { userId: req.user._id };
   if (repo) query.repoName = repo;
+  if (visibility) query.visibility = visibility;
   
   const commits = await Commit.find(query)
     .sort({ date: -1 })
@@ -37,15 +38,18 @@ router.get('/stats', isAuthenticated, async (req, res) => {
   
   const repoStats = {};
   commits.forEach(commit => {
-    if (!repoStats[commit.repoName]) repoStats[commit.repoName] = 0;
-    repoStats[commit.repoName]++;
+    const key = commit.repoName;
+    if (!repoStats[key]) {
+      repoStats[key] = { name: commit.repoName, count: 0, visibility: commit.visibility || 'public' };
+    }
+    repoStats[key].count++;
   });
   
   res.json({
     totalCommits,
     totalAdditions,
     totalDeletions,
-    repos: Object.entries(repoStats).map(([name, count]) => ({ name, count }))
+    repos: Object.values(repoStats)
   });
 });
 

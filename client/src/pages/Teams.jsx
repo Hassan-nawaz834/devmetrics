@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 
 function Teams() {
-  const { user } = useAuth();
   const [teams, setTeams] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
