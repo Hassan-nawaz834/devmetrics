@@ -1,5 +1,6 @@
 const express = require('express');
 const Commit = require('../models/Commit');
+const Repository = require('../models/Repository');
 
 const router = express.Router();
 
@@ -27,17 +28,27 @@ router.get('/stats', isAuthenticated, async (req, res) => {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
-  const commits = await Commit.find({
+  const recentCommits = await Commit.find({
     userId: req.user._id,
     date: { $gte: thirtyDaysAgo }
   });
+  const allCommits = await Commit.find({ userId: req.user._id });
+  const repositories = await Repository.find({ userId: req.user._id }).sort({ updatedAt: -1 });
   
-  const totalCommits = commits.length;
-  const totalAdditions = commits.reduce((sum, c) => sum + (c.additions || 0), 0);
-  const totalDeletions = commits.reduce((sum, c) => sum + (c.deletions || 0), 0);
+  const totalCommits = recentCommits.length;
+  const totalAdditions = recentCommits.reduce((sum, c) => sum + (c.additions || 0), 0);
+  const totalDeletions = recentCommits.reduce((sum, c) => sum + (c.deletions || 0), 0);
   
   const repoStats = {};
-  commits.forEach(commit => {
+  repositories.forEach((repo) => {
+    repoStats[repo.name] = {
+      name: repo.name,
+      count: 0,
+      visibility: repo.visibility || 'public'
+    };
+  });
+
+  allCommits.forEach(commit => {
     const key = commit.repoName;
     if (!repoStats[key]) {
       repoStats[key] = { name: commit.repoName, count: 0, visibility: commit.visibility || 'public' };

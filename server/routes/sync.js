@@ -1,5 +1,6 @@
 const express = require('express');
 const Commit = require('../models/Commit');
+const Repository = require('../models/Repository');
 const User = require('../models/User');
 const { fetchGitHubUserData } = require('../services/githubService');
 
@@ -19,6 +20,32 @@ router.post('/start', isAuthenticated, async (req, res) => {
     }
 
     const data = await fetchGitHubUserData(user.accessToken);
+
+    const repoIds = data.repos.map((repo) => repo.id);
+
+    await Promise.all(data.repos.map((repo) => Repository.findOneAndUpdate(
+      { userId: user._id, githubId: repo.id },
+      {
+        $set: {
+          userId: user._id,
+          githubId: repo.id,
+          name: repo.name,
+          fullName: repo.fullName,
+          owner: repo.owner,
+          private: repo.private,
+          visibility: repo.visibility,
+          language: repo.language,
+          defaultBranch: repo.defaultBranch,
+          updatedAt: repo.updatedAt,
+          lastSyncedAt: new Date()
+        }
+      },
+      { upsert: true, new: true }
+    )));
+
+    if (repoIds.length > 0) {
+      await Repository.deleteMany({ userId: user._id, githubId: { $nin: repoIds } });
+    }
 
     for (const commitData of data.commits) {
       const existing = await Commit.findOne({ userId: user._id, commitSha: commitData.sha });

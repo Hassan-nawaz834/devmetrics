@@ -55,6 +55,7 @@ function Dashboard() {
       const response = await axios.post('/api/sync/start', {}, { withCredentials: true });
       await fetchStats();
       await fetchCommits();
+      await fetchRepoStats();
       alert(response.data.message);
     } catch (err) {
       alert('Unable to sync GitHub data right now.');
