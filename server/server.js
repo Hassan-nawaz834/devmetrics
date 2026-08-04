@@ -9,6 +9,7 @@ const passport = require('passport');
 const authRoutes = require('./routes/auth');
 const commitRoutes = require('./routes/commits');
 const teamRoutes = require('./routes/teams');
+const teamAnalyticsRoutes = require('./routes/teamAnalytics');
 const userRoutes = require('./routes/user');
 const statsRoutes = require('./routes/stats');
 const syncRoutes = require('./routes/sync');
@@ -38,6 +39,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/devmetric
 app.use('/api/auth', authRoutes);
 app.use('/api/commits', commitRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/team-analytics', teamAnalyticsRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/sync', syncRoutes);

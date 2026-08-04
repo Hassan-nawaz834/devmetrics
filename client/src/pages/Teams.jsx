@@ -15,12 +15,12 @@ function Teams() {
   }, []);
 
   const fetchTeams = async () => {
-    const response = await axios.get('http://localhost:5000/api/teams', { withCredentials: true });
+    const response = await axios.get('/api/teams', { withCredentials: true });
     setTeams(response.data);
   };
 
   const createTeam = async () => {
-    await axios.post('http://localhost:5000/api/teams', 
+    await axios.post('/api/teams',
       { name: newTeamName, description: newTeamDesc },
       { withCredentials: true }
     );

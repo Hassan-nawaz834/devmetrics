@@ -9,7 +9,7 @@ function Settings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const updateSettings = async () => {
-    await axios.put('http://localhost:5000/api/user/settings',
+    await axios.put('/api/user/settings',
       { syncFrequency, emailReports },
       { withCredentials: true }
     );
@@ -17,7 +17,7 @@ function Settings() {
   };
 
   const deleteAccount = async () => {
-    await axios.delete('http://localhost:5000/api/user/account', { withCredentials: true });
+    await axios.delete('/api/user/account', { withCredentials: true });
     logout();
   };
 

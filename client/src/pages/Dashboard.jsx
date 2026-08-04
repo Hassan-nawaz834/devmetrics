@@ -1,38 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
 import axios from 'axios';
-import CommitHeatmap from '../components/dashboard/CommitHeatmap';
-import ActivityChart from '../components/dashboard/ActivityChart';
-import StreakCard from '../components/dashboard/StreakCard';
+import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
-  const { user } = useAuth();
-  const [commits, setCommits] = useState([]);
+  const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchStats();
   }, []);
 
-  const fetchData = async () => {
+  const fetchStats = async () => {
     try {
-      const [commitsRes, statsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/commits', { withCredentials: true }),
-        axios.get('http://localhost:5000/api/commits/stats', { withCredentials: true })
-      ]);
-      setCommits(commitsRes.data);
-      setStats(statsRes.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      const response = await axios.get('/api/stats/overview', { withCredentials: true });
+      setStats(response.data);
+    } catch (err) {
+      console.log('Stats not available yet (no commits synced)');
     } finally {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,6 +30,12 @@ function Dashboard() {
           <div className="flex items-center gap-3">
             <span className="text-gray-600">{user?.username}</span>
             <img src={user?.avatarUrl} className="w-8 h-8 rounded-full" alt="Avatar" />
+            <button 
+              onClick={logout}
+              className="text-red-600 hover:text-red-700"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -49,38 +43,43 @@ function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-800">Welcome back, {user?.username}!</h2>
-          <p className="text-gray-500 mt-1">Here's your coding activity summary</p>
+          <p className="text-gray-500 mt-1">Track your coding productivity and collaborations</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-gray-500 text-sm">Total Commits (30 days)</div>
-            <div className="text-4xl font-bold text-blue-600">{stats?.totalCommits || 0}</div>
+        {loading ? (
+          <div className="text-center">
+            <p className="text-gray-600">Loading statistics...</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-gray-500 text-sm">Lines Added</div>
-            <div className="text-4xl font-bold text-green-600">+{stats?.totalAdditions?.toLocaleString() || 0}</div>
+        ) : stats ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-semibold">Total Commits</h3>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.totalCommits || 0}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-semibold">Unique Days</h3>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.uniqueDays || 0}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-semibold">Additions</h3>
+              <p className="text-3xl font-bold text-blue-600 mt-2">+{stats.totalAdditions || 0}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-semibold">Deletions</h3>
+              <p className="text-3xl font-bold text-red-600 mt-2">-{stats.totalDeletions || 0}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-gray-500 text-sm">Active Repos</div>
-            <div className="text-4xl font-bold text-purple-600">{stats?.repos?.length || 0}</div>
-          </div>
-        </div>
+        ) : null}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Commit Activity</h3>
-            <ActivityChart commits={commits} />
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Current Streak</h3>
-            <StreakCard commits={commits} />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Commit Heatmap</h3>
-          <CommitHeatmap commits={commits} />
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Getting Started</h3>
+          <p className="text-gray-600 mb-4">No commits synced yet. Features will be available once you sync your GitHub data:</p>
+          <ul className="text-left inline-block text-gray-600">
+            <li className="mb-2">• Commit statistics and trends</li>
+            <li className="mb-2">• Productivity heatmap</li>
+            <li className="mb-2">• Streak tracking</li>
+            <li className="mb-2">• Team collaboration analytics</li>
+          </ul>
         </div>
       </div>
     </div>
