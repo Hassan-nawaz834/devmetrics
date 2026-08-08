@@ -1,75 +1,218 @@
-const axios = require('axios');
+// server/services/githubService.js
+const { Octokit } = require('@octokit/rest');
 
-async function collectPaginatedData(requestFn, { perPage = 100 } = {}) {
-  const allItems = [];
-  let page = 1;
-
-  while (true) {
-    const response = await requestFn(page);
-    const items = response?.data || [];
-
-    if (!Array.isArray(items)) {
-      break;
-    }
-
-    allItems.push(...items);
-
-    if (items.length === 0) {
-      break;
-    }
-
-    page += 1;
+class GitHubService {
+  constructor() {
+    this.octokit = null;
   }
 
-  return allItems;
-}
+  initialize(token) {
+    if (!token) throw new Error('GitHub token is required');
+    this.octokit = new Octokit({
+      auth: token,
+      userAgent: 'DevMetrics App v1.0'
+    });
+  }
 
-async function fetchGitHubUserData(accessToken) {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    Accept: 'application/vnd.github+json'
-  };
-
-  const [repos, events] = await Promise.all([
-    collectPaginatedData(async (page) => axios.get(`https://api.github.com/user/repos?per_page=100&sort=updated&page=${page}`, { headers })),
-    collectPaginatedData(async (page) => axios.get(`https://api.github.com/users?per_page=5&page=${page}`, { headers }))
-  ]);
-
-  const normalizedRepos = repos.map((repo) => ({
-    id: repo.id,
-    name: repo.name,
-    fullName: repo.full_name,
-    owner: repo.owner?.login || '',
-    private: repo.private,
-    visibility: repo.private ? 'private' : 'public',
-    updatedAt: repo.updated_at,
-    language: repo.language,
-    defaultBranch: repo.default_branch
-  }));
-
-  const commits = [];
-  for (const repo of normalizedRepos.slice(0, 20)) {
+  async getUserRepositories(username, token) {
     try {
-      const response = await axios.get(`https://api.github.com/repos/${repo.fullName}/commits?per_page=10`, { headers });
-      response.data.forEach((item) => {
-        commits.push({
-          repoName: repo.name,
-          visibility: repo.visibility,
-          sha: item.sha,
-          message: item.commit.message,
-          date: item.commit.author?.date || new Date().toISOString(),
-          author: item.commit.author?.name || 'Unknown'
-        });
+      this.initialize(token);
+
+      const { data: repos } = await this.octokit.repos.listForAuthenticatedUser({
+        visibility: 'all',
+        affiliation: 'owner,collaborator,organization_member',
+        sort: 'updated',
+        direction: 'desc',
+        per_page: 100
       });
+
+      const repoData = await Promise.all(
+        repos.map(async (repo) => {
+          let totalCommits = 0;
+          let languages = {};
+
+          try {
+            const { headers } = await this.octokit.repos.listCommits({
+              owner: repo.owner.login,
+              repo: repo.name,
+              per_page: 1
+            });
+            const link = headers.link || '';
+            const match = link.match(/page=(\d+)>; rel="last"/);
+            totalCommits = match ? parseInt(match[1], 10) : 1;
+          } catch {
+            totalCommits = 0;
+          }
+
+          try {
+            const { data } = await this.octokit.repos.listLanguages({
+              owner: repo.owner.login,
+              repo: repo.name
+            });
+            languages = data || {};
+          } catch {
+            languages = {};
+          }
+
+          return {
+            id: repo.id,
+            name: repo.name,
+            fullName: repo.full_name,
+            description: repo.description || '',
+            private: repo.private,
+            visibility: repo.private ? 'private' : 'public',
+            url: repo.html_url,
+            cloneUrl: repo.clone_url,
+            defaultBranch: repo.default_branch || 'main',
+            createdAt: repo.created_at,
+            updatedAt: repo.updated_at,
+            pushedAt: repo.pushed_at,
+            size: repo.size || 0,
+            stars: repo.stargazers_count || 0,
+            forks: repo.forks_count || 0,
+            watchers: repo.watchers_count || 0,
+            openIssues: repo.open_issues_count || 0,
+            language: repo.language || 'N/A',
+            languages,
+            commitCount: totalCommits,
+            owner: repo.owner.login
+          };
+        })
+      );
+
+      return {
+        success: true,
+        repositories: repoData,
+        total: repoData.length,
+        publicCount: repoData.filter(r => !r.private).length,
+        privateCount: repoData.filter(r => r.private).length
+      };
     } catch (error) {
-      console.error(`Unable to fetch commits for ${repo.fullName}`, error.message);
+      console.error('Error fetching repositories:', error.message);
+      return { success: false, error: error.message, repositories: [] };
     }
   }
 
-  return { repos: normalizedRepos, commits, events };
+  // ---------- MAIN SYNC - LAST 30 DAYS ----------
+  async syncAllRepositories(username, token, userId) {
+    try {
+      this.initialize(token);
+
+      // Get authenticated user
+      const { data: authUser } = await this.octokit.users.getAuthenticated();
+      const login = authUser.login;
+
+      console.log(`🔍 Syncing commits for user: ${login} (ID: ${userId})`);
+
+      const repoResult = await this.getUserRepositories(login, token);
+      if (!repoResult.success) return repoResult;
+
+      // ===== LAST 30 DAYS =====
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const sinceISO = since.toISOString();
+
+      console.log(`📅 Fetching commits since: ${sinceISO}`);
+
+      const allCommits = [];
+      const maxRepos = Math.min(repoResult.repositories.length, 30);
+
+      for (let i = 0; i < maxRepos; i++) {
+        const repo = repoResult.repositories[i];
+        console.log(`📂 Processing repo: ${repo.name} (${i + 1}/${maxRepos})`);
+
+        try {
+          // Fetch commits from the last 30 days by this user
+          const { data: commits } = await this.octokit.repos.listCommits({
+            owner: repo.owner || login,
+            repo: repo.name,
+            author: login,
+            since: sinceISO,
+            per_page: 100
+          });
+
+          console.log(`  📝 Found ${commits.length} commits in ${repo.name}`);
+
+          for (const c of commits || []) {
+            const dateStr = c.commit?.author?.date || c.commit?.committer?.date;
+            if (!dateStr) continue;
+
+            const d = new Date(dateStr);
+
+            // Skip if older than 30 days
+            if (d < since) continue;
+
+            // Get stats if available (from GitHub API v3)
+            let additions = 0;
+            let deletions = 0;
+            try {
+              if (c.stats) {
+                additions = c.stats.additions || 0;
+                deletions = c.stats.deletions || 0;
+              }
+            } catch {
+              // ignore stats errors
+            }
+
+            allCommits.push({
+              sha: c.sha,
+              repoName: repo.name,
+              visibility: repo.visibility || (repo.private ? 'private' : 'public'),
+              date: d.toISOString(),
+              message: (c.commit?.message || '').split('\n')[0],
+              hour: d.getUTCHours(),
+              dayOfWeek: d.getUTCDay(),
+              additions: additions,
+              deletions: deletions
+            });
+          }
+        } catch (err) {
+          console.log(`  ⚠️ Error fetching commits for ${repo.name}: ${err.message}`);
+        }
+      }
+
+      // Remove duplicates by SHA (keep newest)
+      const uniqueCommits = [];
+      const seen = new Set();
+      for (const c of allCommits) {
+        if (!seen.has(c.sha)) {
+          seen.add(c.sha);
+          uniqueCommits.push(c);
+        }
+      }
+
+      // Sort by date (newest first)
+      uniqueCommits.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      console.log(`✅ Total unique commits found: ${uniqueCommits.length}`);
+
+      return {
+        success: true,
+        message: `Synced ${repoResult.total} repositories and ${uniqueCommits.length} commits (last 30 days) for ${login}`,
+        repositories: repoResult.repositories,
+        commits: uniqueCommits,
+        total: repoResult.total,
+        publicCount: repoResult.publicCount,
+        privateCount: repoResult.privateCount
+      };
+    } catch (error) {
+      console.error('Error syncing:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getRepositoryDetails(username, repoName, token) {
+    try {
+      this.initialize(token);
+      const { data: repo } = await this.octokit.repos.get({
+        owner: username,
+        repo: repoName
+      });
+      return { success: true, repository: repo };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
-module.exports = {
-  fetchGitHubUserData,
-  collectPaginatedData
-};
+module.exports = new GitHubService();

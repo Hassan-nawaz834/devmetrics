@@ -1,55 +1,45 @@
-require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
-
-// Import routes
-const authRoutes = require('./routes/auth');
-const commitRoutes = require('./routes/commits');
-const teamRoutes = require('./routes/teams');
-const teamAnalyticsRoutes = require('./routes/teamAnalytics');
-const userRoutes = require('./routes/user');
-const statsRoutes = require('./routes/stats');
-const syncRoutes = require('./routes/sync');
+require('dotenv').config();
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
-app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'secret',
-  resave: false,
-  saveUninitialized: false
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your_session_secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
+  })
+);
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/devmetrics')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true
+  })
+);
+app.use(express.json());
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/commits', commitRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/team-analytics', teamAnalyticsRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/sync', syncRoutes);
+require('./config/passport');
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'DevMetrics API is running' });
-});
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/commits', require('./routes/commits'));
+app.use('/api/stats', require('./routes/stats'));
+app.use('/api/repositories', require('./routes/repositories'));
+app.use('/api/user', require('./routes/user'));
+// Keep the other route files if you still use teams/sync – apply the same `auth` middleware pattern to them.
+
+mongoose
+  .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/devmetrics')
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
