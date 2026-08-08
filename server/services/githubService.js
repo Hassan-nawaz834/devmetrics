@@ -84,8 +84,8 @@ class GitHubService {
         success: true,
         repositories: repoData,
         total: repoData.length,
-        publicCount: repoData.filter(r => !r.private).length,
-        privateCount: repoData.filter(r => r.private).length
+        publicCount: repoData.filter((r) => !r.private).length,
+        privateCount: repoData.filter((r) => r.private).length
       };
     } catch (error) {
       console.error('Error fetching repositories:', error.message);
@@ -98,7 +98,6 @@ class GitHubService {
     try {
       this.initialize(token);
 
-      // Get authenticated user
       const { data: authUser } = await this.octokit.users.getAuthenticated();
       const login = authUser.login;
 
@@ -107,7 +106,6 @@ class GitHubService {
       const repoResult = await this.getUserRepositories(login, token);
       if (!repoResult.success) return repoResult;
 
-      // ===== LAST 30 DAYS =====
       const since = new Date();
       since.setDate(since.getDate() - 30);
       const sinceISO = since.toISOString();
@@ -115,14 +113,15 @@ class GitHubService {
       console.log(`📅 Fetching commits since: ${sinceISO}`);
 
       const allCommits = [];
-      const maxRepos = Math.min(repoResult.repositories.length, 30);
+      // Sync more repos for better data (up to 50)
+      const maxRepos = Math.min(repoResult.repositories.length, 50);
 
       for (let i = 0; i < maxRepos; i++) {
         const repo = repoResult.repositories[i];
         console.log(`📂 Processing repo: ${repo.name} (${i + 1}/${maxRepos})`);
 
         try {
-          // Fetch commits from the last 30 days by this user
+          // Get commits by this user in the last 30 days
           const { data: commits } = await this.octokit.repos.listCommits({
             owner: repo.owner || login,
             repo: repo.name,
@@ -138,11 +137,8 @@ class GitHubService {
             if (!dateStr) continue;
 
             const d = new Date(dateStr);
-
-            // Skip if older than 30 days
             if (d < since) continue;
 
-            // Get stats if available (from GitHub API v3)
             let additions = 0;
             let deletions = 0;
             try {
@@ -151,7 +147,7 @@ class GitHubService {
                 deletions = c.stats.deletions || 0;
               }
             } catch {
-              // ignore stats errors
+              // ignore
             }
 
             allCommits.push({
@@ -162,8 +158,8 @@ class GitHubService {
               message: (c.commit?.message || '').split('\n')[0],
               hour: d.getUTCHours(),
               dayOfWeek: d.getUTCDay(),
-              additions: additions,
-              deletions: deletions
+              additions,
+              deletions
             });
           }
         } catch (err) {
@@ -171,7 +167,7 @@ class GitHubService {
         }
       }
 
-      // Remove duplicates by SHA (keep newest)
+      // Deduplicate by SHA
       const uniqueCommits = [];
       const seen = new Set();
       for (const c of allCommits) {
@@ -181,7 +177,6 @@ class GitHubService {
         }
       }
 
-      // Sort by date (newest first)
       uniqueCommits.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       console.log(`✅ Total unique commits found: ${uniqueCommits.length}`);

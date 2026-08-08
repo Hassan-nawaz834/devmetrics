@@ -1,6 +1,7 @@
+// client/src/pages/Settings.jsx
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { apiUrl } from '../config/api';
 
 function Settings() {
   const { user, logout } = useAuth();
@@ -21,10 +22,17 @@ function Settings() {
   const updateSettings = async () => {
     setSaving(true);
     try {
-      await axios.put('/api/user/settings',
-        { syncFrequency, emailReports, privateRepos },
-        { withCredentials: true }
-      );
+      const token = localStorage.getItem('token');
+      const response = await fetch(apiUrl('/user/settings'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ syncFrequency, emailReports, privateRepos })
+      });
+
+      if (!response.ok) throw new Error('Failed to update settings');
       alert('Settings updated!');
     } catch (error) {
       alert('Unable to update settings right now.');
@@ -34,8 +42,16 @@ function Settings() {
   };
 
   const deleteAccount = async () => {
-    await axios.delete('/api/user/account', { withCredentials: true });
-    logout();
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(apiUrl('/user/account'), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      logout();
+    } catch (error) {
+      alert('Unable to delete account right now.');
+    }
   };
 
   return (
@@ -46,7 +62,9 @@ function Settings() {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Profile</h2>
           <div className="flex items-center gap-4 mb-4">
-            <img src={user?.avatarUrl} className="w-16 h-16 rounded-full" />
+            {user?.avatarUrl && (
+              <img src={user.avatarUrl} alt="" className="w-16 h-16 rounded-full" />
+            )}
             <div>
               <p className="font-medium">{user?.username}</p>
               <p className="text-gray-500 text-sm">{user?.email}</p>
@@ -55,71 +73,79 @@ function Settings() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Sync Settings</h2>
+          <h2 className="text-xl font-semibold mb-4">Preferences</h2>
+
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Sync Frequency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sync Frequency</label>
             <select
               value={syncFrequency}
               onChange={(e) => setSyncFrequency(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded px-3 py-2"
             >
+              <option value="hourly">Hourly</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
-              <option value="manual">Manual Only</option>
             </select>
           </div>
-          <div className="mb-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={emailReports}
-                onChange={(e) => setEmailReports(e.target.checked)}
-              />
-              <span>Receive weekly email reports</span>
-            </label>
+
+          <div className="mb-4 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="emailReports"
+              checked={emailReports}
+              onChange={(e) => setEmailReports(e.target.checked)}
+            />
+            <label htmlFor="emailReports">Email reports</label>
           </div>
-          <div className="mb-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={privateRepos}
-                onChange={(e) => setPrivateRepos(e.target.checked)}
-              />
-              <span>Include private repositories</span>
-            </label>
+
+          <div className="mb-4 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="privateRepos"
+              checked={privateRepos}
+              onChange={(e) => setPrivateRepos(e.target.checked)}
+            />
+            <label htmlFor="privateRepos">Include private repositories</label>
           </div>
+
           <button
             onClick={updateSettings}
             disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-red-200">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Danger Zone</h2>
-          <p className="text-gray-600 mb-4">Once you delete your account, all data will be permanently removed.</p>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-          >
-            Delete Account
-          </button>
-        </div>
-
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h2 className="text-xl font-bold text-red-600 mb-4">Delete Account?</h2>
-              <p className="text-gray-600 mb-4">This action cannot be undone. All your data will be lost.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-gray-600">Cancel</button>
-                <button onClick={deleteAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
-              </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-red-600">Danger Zone</h2>
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Delete Account
+            </button>
+          ) : (
+            <div>
+              <p className="mb-3 text-sm text-gray-600">
+                Are you sure? This will permanently delete your account and data.
+              </p>
+              <button
+                onClick={deleteAccount}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 mr-2"
+              >
+                Yes, delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

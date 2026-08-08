@@ -3,18 +3,11 @@ const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').r
 
 export default API_BASE;
 
-/**
- * Build a full API URL.
- * @param {string} path - e.g. '/auth/me' or 'repositories'
- */
 export const apiUrl = (path = '') => {
   const clean = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE}${clean}`;
 };
 
-/**
- * Backend origin (without /api) – useful for OAuth redirects.
- */
 export const backendOrigin = () => {
   return API_BASE.replace(/\/api\/?$/, '') || 'http://localhost:5000';
 };

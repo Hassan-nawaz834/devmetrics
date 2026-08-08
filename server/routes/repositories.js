@@ -97,8 +97,7 @@ router.post('/sync', auth, async (req, res) => {
     for (const c of result.commits || []) {
       try {
         const date = new Date(c.date);
-        
-        // Use updateOne with $setOnInsert for atomic upsert
+
         const updateResult = await Commit.updateOne(
           { userId, commitSha: c.sha },
           {
@@ -129,7 +128,9 @@ router.post('/sync', auth, async (req, res) => {
       }
     }
 
-    console.log(`✅ Sync complete: ${reposSaved} repos, ${commitsImported} new commits, ${commitsSkipped} skipped`);
+    console.log(
+      `✅ Sync complete: ${reposSaved} repos, ${commitsImported} new commits, ${commitsSkipped} skipped`
+    );
 
     res.json({
       success: true,
@@ -138,7 +139,7 @@ router.post('/sync', auth, async (req, res) => {
         repositories: reposSaved,
         commitsImported,
         commitsSkipped,
-        totalCommits: result.commits.length
+        totalCommits: (result.commits || []).length
       }
     });
   } catch (error) {
