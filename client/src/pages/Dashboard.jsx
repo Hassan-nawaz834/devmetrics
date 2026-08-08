@@ -1,10 +1,11 @@
-// client/src/pages/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ActivityChart from '../components/dashboard/ActivityChart';
 import PeakHours from '../components/dashboard/PeakHours';
 import StreakCard from '../components/dashboard/StreakCard';
 import RepositoryList from '../components/dashboard/RepositoryList';
+import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
+import LanguageChart from '../components/dashboard/LanguageChart';
 import { apiUrl } from '../config/api';
 import '../dashboardTheme.css';
 
@@ -367,15 +368,20 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* NEW: Contribution Heatmap */}
+        <ContributionHeatmap commits={commits} />
+
         <RepositoryList
           repositories={repositories}
           loading={loadingRepos}
           onRefresh={handleManualRefresh}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Charts row — now includes LanguageChart */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <ActivityChart commits={commits} />
           <PeakHours commits={commits} />
+          <LanguageChart repositories={repositories} />
         </div>
 
         <StreakCard commits={commits} />
