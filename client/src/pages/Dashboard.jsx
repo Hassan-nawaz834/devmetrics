@@ -6,6 +6,8 @@ import StreakCard from '../components/dashboard/StreakCard';
 import RepositoryList from '../components/dashboard/RepositoryList';
 import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
 import LanguageChart from '../components/dashboard/LanguageChart';
+import CommitPunchCard from '../components/dashboard/CommitPunchCard';
+import YearInReview from '../components/dashboard/YearInReview';
 import { apiUrl } from '../config/api';
 import '../dashboardTheme.css';
 
@@ -111,7 +113,6 @@ function Dashboard() {
     }
   }, []);
 
-  // ALWAYS sync from GitHub (this is the key fix)
   const syncData = useCallback(
     async (showLoading = true) => {
       if (isSyncingRef.current) {
@@ -146,7 +147,6 @@ function Dashboard() {
 
         if (result.success) {
           setLastSyncTime(new Date());
-          // Reload everything after sync
           await Promise.all([
             fetchCommits(token),
             fetchRepositories(),
@@ -167,16 +167,12 @@ function Dashboard() {
     [fetchCommits, fetchRepositories, fetchStats]
   );
 
-  // Initial load: always sync so data is fresh
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Always pull latest from GitHub first
       await syncData(false);
 
-      // If sync failed, still try to show whatever is in DB
       const token = localStorage.getItem('token');
       if (token) {
         await Promise.all([fetchCommits(token), fetchRepositories(), fetchStats(token)]);
@@ -191,7 +187,6 @@ function Dashboard() {
     }
   }, [syncData, fetchCommits, fetchRepositories, fetchStats]);
 
-  // Auto-refresh every 5 minutes — always sync
   useEffect(() => {
     loadDashboard();
 
@@ -203,11 +198,9 @@ function Dashboard() {
     return () => clearInterval(intervalId);
   }, [loadDashboard, syncData]);
 
-  // Refresh when user returns to the tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // If last sync older than 1 minute, sync again
         if (!lastSyncTime || new Date() - lastSyncTime > 60000) {
           console.log('👁️ Tab visible — syncing latest data...');
           syncData(false);
@@ -219,7 +212,6 @@ function Dashboard() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [syncData, lastSyncTime]);
 
-  // Manual refresh — always force a live GitHub sync
   const handleManualRefresh = useCallback(() => {
     setError(null);
     syncData(true);
@@ -323,12 +315,8 @@ function Dashboard() {
           <div className="glass glass-hover rounded-[18px] p-6 transition-transform">
             <div className="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3.5 bg-[rgba(45,212,191,0.14)] text-[var(--teal)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
             <p className="font-display text-3xl font-medium">
@@ -340,12 +328,8 @@ function Dashboard() {
           <div className="glass glass-hover rounded-[18px] p-6 transition-transform">
             <div className="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3.5 bg-[rgba(167,139,250,0.14)] text-[var(--violet)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
             </div>
             <p className="font-display text-3xl font-medium">{stats.repositories || repositories.length || 0}</p>
@@ -355,12 +339,8 @@ function Dashboard() {
           <div className="glass glass-hover rounded-[18px] p-6 transition-transform">
             <div className="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3.5 bg-[rgba(251,191,103,0.14)] text-[var(--gold)]">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <p className="font-display text-3xl font-medium">{stats.contributors || 1}</p>
@@ -368,8 +348,14 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* NEW: Contribution Heatmap */}
+        {/* Year in Review — Spotify-style recap */}
+        <YearInReview commits={commits} repositories={repositories} />
+
+        {/* Contribution Heatmap */}
         <ContributionHeatmap commits={commits} />
+
+        {/* Commit Punch Card */}
+        <CommitPunchCard commits={commits} />
 
         <RepositoryList
           repositories={repositories}
@@ -377,7 +363,7 @@ function Dashboard() {
           onRefresh={handleManualRefresh}
         />
 
-        {/* Charts row — now includes LanguageChart */}
+        {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <ActivityChart commits={commits} />
           <PeakHours commits={commits} />
