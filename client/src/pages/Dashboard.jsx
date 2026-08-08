@@ -5,7 +5,8 @@ import ActivityChart from '../components/dashboard/ActivityChart';
 import PeakHours from '../components/dashboard/PeakHours';
 import StreakCard from '../components/dashboard/StreakCard';
 import RepositoryList from '../components/dashboard/RepositoryList';
-import '../dashboardTheme.css'; // adjust path to wherever you saved dashboardTheme.css
+import { apiUrl } from '../config/api';
+import '../dashboardTheme.css';
 
 function AuroraBackground() {
   return (
@@ -33,15 +34,13 @@ function Dashboard() {
     lastUpdated: null
   });
 
-  // Use ref to prevent multiple simultaneous syncs
   const isSyncingRef = useRef(false);
 
-  // Fetch repositories only - FIXED: properly sets loadingRepos to false
   const fetchRepositories = useCallback(async () => {
     try {
       setLoadingRepos(true);
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         console.warn('No token found, skipping repository fetch');
         setLoadingRepos(false);
@@ -49,7 +48,7 @@ function Dashboard() {
       }
 
       console.log('📦 Fetching repositories...');
-      const response = await fetch('/api/repositories', {
+      const response = await fetch(apiUrl('/repositories'), {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -74,15 +73,13 @@ function Dashboard() {
       console.error('Error fetching repositories:', err);
       setRepositories([]);
     } finally {
-      // CRITICAL FIX: Always set loadingRepos to false
       setLoadingRepos(false);
     }
   }, []);
 
-  // Fetch commits only
   const fetchCommits = useCallback(async (token) => {
     try {
-      const response = await fetch('/api/commits', {
+      const response = await fetch(apiUrl('/commits'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -97,10 +94,9 @@ function Dashboard() {
     }
   }, []);
 
-  // Fetch stats only
   const fetchStats = useCallback(async (token) => {
     try {
-      const response = await fetch('/api/stats/dashboard', {
+      const response = await fetch(apiUrl('/stats/dashboard'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -116,9 +112,7 @@ function Dashboard() {
     }
   }, []);
 
-  // Auto-sync function - FIXED: prevents multiple simultaneous syncs
   const syncData = useCallback(async (showLoading = true) => {
-    // Prevent multiple simultaneous syncs
     if (isSyncingRef.current) {
       console.log('⏳ Sync already in progress, skipping...');
       return false;
@@ -136,10 +130,10 @@ function Dashboard() {
 
       console.log('🔄 Auto-syncing GitHub data...');
 
-      const response = await fetch('/api/repositories/sync', {
+      const response = await fetch(apiUrl('/repositories/sync'), {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -153,7 +147,6 @@ function Dashboard() {
 
       if (result.success) {
         setLastSyncTime(new Date());
-        // Refresh all data after successful sync
         await Promise.all([
           fetchCommits(token),
           fetchRepositories(),
@@ -171,24 +164,19 @@ function Dashboard() {
     }
   }, [fetchCommits, fetchRepositories, fetchStats]);
 
-  // Initial load - auto-sync if no commits exist
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      // First, fetch repositories (this will set loadingRepos)
       await fetchRepositories();
 
-      // Then try to get existing commits
       const commitsData = await fetchCommits(token);
 
-      // If no commits, auto-sync
       if (!commitsData || commitsData.length === 0) {
         console.log('📊 No commits found, auto-syncing...');
         await syncData(false);
       } else {
-        // If commits exist, just fetch stats
         await fetchStats(token);
       }
 
@@ -201,27 +189,21 @@ function Dashboard() {
     }
   }, [fetchCommits, fetchRepositories, fetchStats, syncData]);
 
-  // Auto-refresh every 5 minutes (300000 ms)
   useEffect(() => {
-    // Initial load
     loadDashboard();
 
-    // Set up auto-refresh interval
     const intervalId = setInterval(() => {
       console.log('🔄 Auto-refreshing dashboard data...');
       loadDashboard();
-    }, 300000); // 5 minutes
+    }, 300000);
 
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
   }, [loadDashboard]);
 
-  // Also refresh when user comes back to tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('👁️ Tab visible, refreshing data...');
-        // Check if last sync was more than 2 minutes ago
         if (lastSyncTime && (new Date() - lastSyncTime) > 120000) {
           loadDashboard();
         }
@@ -232,7 +214,6 @@ function Dashboard() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loadDashboard, lastSyncTime]);
 
-  // Manual refresh (kept for edge cases)
   const handleManualRefresh = useCallback(() => {
     loadDashboard();
   }, [loadDashboard]);

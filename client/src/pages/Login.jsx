@@ -1,5 +1,7 @@
+// client/src/pages/Login.jsx
 import React from 'react';
 import '../dashboardTheme.css';
+import { backendOrigin } from '../config/api';
 
 function AuroraBackground() {
   return (
@@ -13,7 +15,8 @@ function AuroraBackground() {
 
 function Login() {
   const handleGitHubLogin = () => {
-    window.location.href = 'http://localhost:5000/api/auth/github';
+    // Points to your Render backend in production
+    window.location.href = `${backendOrigin()}/api/auth/github`;
   };
 
   return (

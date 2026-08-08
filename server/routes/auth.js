@@ -1,9 +1,12 @@
+// server/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const signToken = (user) =>
   jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'your_jwt_secret_key', { expiresIn: '7d' });
@@ -68,11 +71,11 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Current user – shape expected by frontend AuthContext
+// Current user
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password -githubToken');
-    res.json(user); // plain object so frontend can setUser(userData)
+    res.json(user);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -91,20 +94,20 @@ router.get(
 router.get(
   '/github/callback',
   passport.authenticate('github', {
-    failureRedirect: 'http://localhost:5173/login?error=github_auth_failed',
+    failureRedirect: `${FRONTEND_URL}/login?error=github_auth_failed`,
     session: false
   }),
   (req, res) => {
     try {
       const token = signToken(req.user);
       const userData = publicUser(req.user);
-      const redirectUrl = `http://localhost:5173/auth/callback?token=${token}&user=${encodeURIComponent(
+      const redirectUrl = `${FRONTEND_URL}/auth/callback?token=${token}&user=${encodeURIComponent(
         JSON.stringify(userData)
       )}`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error('GitHub callback error:', error);
-      res.redirect('http://localhost:5173/login?error=github_auth_failed');
+      res.redirect(`${FRONTEND_URL}/login?error=github_auth_failed`);
     }
   }
 );
