@@ -36,6 +36,7 @@ function Dashboard() {
     contributors: 0,
     lastUpdated: null
   });
+  const [copied, setCopied] = useState(false);
 
   const isSyncingRef = useRef(false);
 
@@ -217,6 +218,14 @@ function Dashboard() {
     syncData(true);
   }, [syncData]);
 
+  const handleShareProfile = () => {
+    if (!user?.username) return;
+    const url = `${window.location.origin}/u/${user.username}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (loading) {
     return (
       <div className="relative min-h-screen font-body text-[var(--text)]">
@@ -287,26 +296,46 @@ function Dashboard() {
                 </p>
               )}
             </div>
-            <button
-              onClick={handleManualRefresh}
-              disabled={syncing}
-              className="gradient-btn px-5 py-3 rounded-full text-[13.5px] font-semibold flex items-center gap-2 disabled:opacity-60"
-            >
-              <svg
-                className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Share Profile Button */}
+              <button
+                onClick={handleShareProfile}
+                className="px-5 py-3 rounded-full text-[13.5px] font-semibold border border-[var(--border)] hover:border-[var(--border-hi)] hover:bg-white/[0.04] transition-colors flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2.5}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              {syncing ? 'Syncing...' : 'Refresh now'}
-            </button>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                  />
+                </svg>
+                {copied ? 'Link copied!' : 'Share profile'}
+              </button>
+
+              {/* Refresh Button */}
+              <button
+                onClick={handleManualRefresh}
+                disabled={syncing}
+                className="gradient-btn px-5 py-3 rounded-full text-[13.5px] font-semibold flex items-center gap-2 disabled:opacity-60"
+              >
+                <svg
+                  className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                {syncing ? 'Syncing...' : 'Refresh now'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -348,7 +377,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Year in Review — Spotify-style recap */}
+        {/* Year in Review */}
         <YearInReview commits={commits} repositories={repositories} />
 
         {/* Contribution Heatmap */}

@@ -1,4 +1,3 @@
-// client/src/App.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -10,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Teams from './pages/Teams';
 import TeamDetails from './pages/TeamDetails';
 import Settings from './pages/Settings';
+import PublicProfile from './pages/PublicProfile';   // ← add this
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -33,6 +33,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/u/:username" element={<PublicProfile />} />   {/* ← add this */}
 
         {/* Protected routes */}
         <Route
