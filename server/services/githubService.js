@@ -93,15 +93,29 @@ class GitHubService {
     }
   }
 
-  // ---------- MAIN SYNC - LAST 30 DAYS ----------
+  // ---------- MAIN SYNC - LAST 30 DAYS (FIXED AUTHOR MATCHING) ----------
   async syncAllRepositories(username, token, userId) {
     try {
       this.initialize(token);
 
       const { data: authUser } = await this.octokit.users.getAuthenticated();
       const login = authUser.login;
+      const userEmails = new Set();
+
+      // Collect all emails linked to this GitHub account (helps match commits)
+      try {
+        const { data: emails } = await this.octokit.users.listEmailsForAuthenticatedUser();
+        emails.forEach((e) => {
+          if (e.email) userEmails.add(e.email.toLowerCase());
+        });
+      } catch (e) {
+        console.log('Could not fetch user emails:', e.message);
+      }
+
+      if (authUser.email) userEmails.add(authUser.email.toLowerCase());
 
       console.log(`🔍 Syncing commits for user: ${login} (ID: ${userId})`);
+      console.log(`📧 Matching emails:`, [...userEmails]);
 
       const repoResult = await this.getUserRepositories(login, token);
       if (!repoResult.success) return repoResult;
@@ -113,7 +127,6 @@ class GitHubService {
       console.log(`📅 Fetching commits since: ${sinceISO}`);
 
       const allCommits = [];
-      // Sync more repos for better data (up to 50)
       const maxRepos = Math.min(repoResult.repositories.length, 50);
 
       for (let i = 0; i < maxRepos; i++) {
@@ -121,49 +134,81 @@ class GitHubService {
         console.log(`📂 Processing repo: ${repo.name} (${i + 1}/${maxRepos})`);
 
         try {
-          // Get commits by this user in the last 30 days
-          const { data: commits } = await this.octokit.repos.listCommits({
-            owner: repo.owner || login,
-            repo: repo.name,
-            author: login,
-            since: sinceISO,
-            per_page: 100
-          });
+          // 1) Try with author filter first
+          let commits = [];
+          try {
+            const res1 = await this.octokit.repos.listCommits({
+              owner: repo.owner || login,
+              repo: repo.name,
+              author: login,
+              since: sinceISO,
+              per_page: 100
+            });
+            commits = res1.data || [];
+          } catch (err) {
+            console.log(`  ⚠️ author filter failed for ${repo.name}: ${err.message}`);
+          }
+
+          // 2) If few/no results, fetch all recent commits and filter ourselves
+          if (commits.length < 5) {
+            try {
+              const res2 = await this.octokit.repos.listCommits({
+                owner: repo.owner || login,
+                repo: repo.name,
+                since: sinceISO,
+                per_page: 100
+              });
+
+              const filtered = (res2.data || []).filter((c) => {
+                const authorLogin = c.author?.login || c.committer?.login || '';
+                const authorEmail = (
+                  c.commit?.author?.email ||
+                  c.commit?.committer?.email ||
+                  ''
+                ).toLowerCase();
+
+                return (
+                  authorLogin === login ||
+                  authorLogin.toLowerCase() === login.toLowerCase() ||
+                  (authorEmail && userEmails.has(authorEmail))
+                );
+              });
+
+              // Merge without duplicates
+              const existingShas = new Set(commits.map((c) => c.sha));
+              for (const c of filtered) {
+                if (!existingShas.has(c.sha)) {
+                  commits.push(c);
+                }
+              }
+            } catch (err) {
+              console.log(`  ⚠️ fallback fetch failed for ${repo.name}: ${err.message}`);
+            }
+          }
 
           console.log(`  📝 Found ${commits.length} commits in ${repo.name}`);
 
-          for (const c of commits || []) {
+          for (const c of commits) {
             const dateStr = c.commit?.author?.date || c.commit?.committer?.date;
             if (!dateStr) continue;
 
             const d = new Date(dateStr);
             if (d < since) continue;
 
-            let additions = 0;
-            let deletions = 0;
-            try {
-              if (c.stats) {
-                additions = c.stats.additions || 0;
-                deletions = c.stats.deletions || 0;
-              }
-            } catch {
-              // ignore
-            }
-
             allCommits.push({
               sha: c.sha,
               repoName: repo.name,
               visibility: repo.visibility || (repo.private ? 'private' : 'public'),
               date: d.toISOString(),
-              message: (c.commit?.message || '').split('\n')[0],
+              message: (c.commit?.message || '').split('\n')[0].slice(0, 500),
               hour: d.getUTCHours(),
               dayOfWeek: d.getUTCDay(),
-              additions,
-              deletions
+              additions: c.stats?.additions || 0,
+              deletions: c.stats?.deletions || 0
             });
           }
         } catch (err) {
-          console.log(`  ⚠️ Error fetching commits for ${repo.name}: ${err.message}`);
+          console.log(`  ⚠️ Error processing ${repo.name}: ${err.message}`);
         }
       }
 

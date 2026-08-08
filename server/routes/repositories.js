@@ -60,12 +60,13 @@ router.post('/sync', auth, async (req, res) => {
     );
 
     if (!result.success) {
+      console.error('Sync failed:', result.error);
       return res.status(500).json({ success: false, error: result.error });
     }
 
-    // ---------- Save repositories ----------
+    // Save repositories
     let reposSaved = 0;
-    for (const repo of result.repositories) {
+    for (const repo of result.repositories || []) {
       try {
         await Repository.findOneAndUpdate(
           { userId, githubId: repo.id },
@@ -90,7 +91,7 @@ router.post('/sync', auth, async (req, res) => {
       }
     }
 
-    // ---------- Save commits (last 30 days) ----------
+    // Save commits
     let commitsImported = 0;
     let commitsSkipped = 0;
 
@@ -106,7 +107,7 @@ router.post('/sync', auth, async (req, res) => {
               repoName: c.repoName,
               visibility: c.visibility || 'public',
               commitSha: c.sha,
-              date: date,
+              date,
               hour: date.getUTCHours(),
               dayOfWeek: date.getUTCDay(),
               message: c.message || '',
@@ -129,7 +130,7 @@ router.post('/sync', auth, async (req, res) => {
     }
 
     console.log(
-      `✅ Sync complete: ${reposSaved} repos, ${commitsImported} new commits, ${commitsSkipped} skipped`
+      `✅ Sync complete: ${reposSaved} repos, ${commitsImported} new commits, ${commitsSkipped} skipped, total found: ${(result.commits || []).length}`
     );
 
     res.json({
