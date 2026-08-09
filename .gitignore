@@ -1,9 +1,0 @@
-# Environment variables
-.env
-
-
-# Also ignore these common ones
-node_modules/
-dist/
-build/
-.DS_Store
