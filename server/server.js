@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('./config/passport');
 
-// Routes
+// ---------- Routes ----------
 const authRoutes = require('./routes/auth');
 const commitRoutes = require('./routes/commits');
 const repositoryRoutes = require('./routes/repositories');
@@ -13,7 +13,8 @@ const syncRoutes = require('./routes/sync');
 const teamRoutes = require('./routes/teams');
 const teamAnalyticsRoutes = require('./routes/teamAnalytics');
 const userRoutes = require('./routes/user');
-const publicRoutes = require('./routes/public'); // ← NEW public profile route
+const publicRoutes = require('./routes/public');
+const aiRoutes = require('./routes/ai');               // ← AI Weekly Digest
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 // Passport
 app.use(passport.initialize());
 
-// ---------- Routes ----------
+// ---------- API Routes ----------
 app.use('/api/auth', authRoutes);
 app.use('/api/commits', commitRoutes);
 app.use('/api/repositories', repositoryRoutes);
@@ -37,14 +38,15 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/team-analytics', teamAnalyticsRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/public', publicRoutes); // ← Public shareable profiles
+app.use('/api/public', publicRoutes);
+app.use('/api/ai', aiRoutes);                          // ← AI route
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ---------- Database + Server ----------
+// ---------- Database + Start Server ----------
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/devmetrics';
 

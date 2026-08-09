@@ -8,6 +8,7 @@ import ContributionHeatmap from '../components/dashboard/ContributionHeatmap';
 import LanguageChart from '../components/dashboard/LanguageChart';
 import CommitPunchCard from '../components/dashboard/CommitPunchCard';
 import YearInReview from '../components/dashboard/YearInReview';
+import WeeklyDigest from '../components/dashboard/WeeklyDigest';   // ← AI Digest
 import { apiUrl } from '../config/api';
 import '../dashboardTheme.css';
 
@@ -298,7 +299,6 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Share Profile Button */}
               <button
                 onClick={handleShareProfile}
                 className="px-5 py-3 rounded-full text-[13.5px] font-semibold border border-[var(--border)] hover:border-[var(--border-hi)] hover:bg-white/[0.04] transition-colors flex items-center gap-2"
@@ -314,7 +314,6 @@ function Dashboard() {
                 {copied ? 'Link copied!' : 'Share profile'}
               </button>
 
-              {/* Refresh Button */}
               <button
                 onClick={handleManualRefresh}
                 disabled={syncing}
@@ -379,6 +378,9 @@ function Dashboard() {
 
         {/* Year in Review */}
         <YearInReview commits={commits} repositories={repositories} />
+
+        {/* ========== AI WEEKLY DIGEST (Generate button is inside this component) ========== */}
+        <WeeklyDigest />
 
         {/* Contribution Heatmap */}
         <ContributionHeatmap commits={commits} />
