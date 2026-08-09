@@ -53,7 +53,7 @@ export default function WeeklyDigest() {
           <div>
             <div className="flex items-center gap-2 mb-1 font-mono-ui text-[11px] tracking-widest uppercase text-[var(--violet)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--violet)] shadow-[0_0_8px_#a78bfa]" />
-              Powered by Claude
+              Powered by AI
             </div>
             <h3 className="font-display text-[17px] font-medium">Weekly Digest</h3>
             <p className="text-muted-aurora text-sm mt-1">

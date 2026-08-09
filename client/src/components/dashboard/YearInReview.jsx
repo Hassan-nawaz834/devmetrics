@@ -23,8 +23,6 @@ export default function YearInReview({ commits = [], repositories = [] }) {
     if (!periodCommits.length) periodCommits = commits;
 
     const totalCommits = periodCommits.length;
-    const totalAdditions = periodCommits.reduce((s, c) => s + (c.additions || 0), 0);
-    const totalDeletions = periodCommits.reduce((s, c) => s + (c.deletions || 0), 0);
 
     // Busiest day of week
     const dayCount = Array(7).fill(0);
@@ -78,8 +76,6 @@ export default function YearInReview({ commits = [], repositories = [] }) {
     return {
       periodLabel,
       totalCommits,
-      totalAdditions,
-      totalDeletions,
       busiestDay,
       peakHour,
       topRepo,
@@ -104,11 +100,6 @@ export default function YearInReview({ commits = [], repositories = [] }) {
     {
       label: 'Commits shipped',
       value: summary.totalCommits.toLocaleString(),
-      accent: 'var(--teal)',
-    },
-    {
-      label: 'Lines added',
-      value: `+${summary.totalAdditions.toLocaleString()}`,
       accent: 'var(--teal)',
     },
     {
@@ -145,7 +136,7 @@ export default function YearInReview({ commits = [], repositories = [] }) {
         </p>
 
         {/* Big numbers */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           {statItems.map((item) => (
             <div
               key={item.label}

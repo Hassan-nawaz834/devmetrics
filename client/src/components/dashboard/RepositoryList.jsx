@@ -83,7 +83,7 @@ function RepositoryList({ repositories, loading }) {
             {repositories.length} repositories ({repositories.filter(r => !r.private).length} public, {repositories.filter(r => r.private).length} private)
           </p>
         </div>
-        <span className="font-mono-ui text-[11px] text-faint-aurora">Auto-syncs every 5 minutes</span>
+        <span className="font-mono-ui text-[11px] text-faint-aurora"></span>
       </div>
 
       <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">

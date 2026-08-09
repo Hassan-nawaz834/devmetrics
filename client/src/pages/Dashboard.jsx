@@ -274,7 +274,7 @@ function Dashboard() {
             <div>
               <div className="flex items-center gap-2 mb-3 font-mono-ui text-[11.5px] tracking-widest uppercase text-[var(--teal)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] shadow-[0_0_10px_#2dd4bf] animate-pulse" />
-                repository sync active
+                
               </div>
               <h1 className="font-display font-medium text-3xl md:text-4xl leading-tight">
                 Welcome back,<br />
@@ -293,7 +293,7 @@ function Dashboard() {
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
-                  Live sync • Last updated: {new Date(lastSyncTime).toLocaleString()}
+                  Last updated: {new Date(lastSyncTime).toLocaleString()}
                 </p>
               )}
             </div>
