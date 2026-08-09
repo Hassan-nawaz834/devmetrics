@@ -1,0 +1,12 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Also ignore these common ones
+node_modules/
+dist/
+build/
+.DS_Store
